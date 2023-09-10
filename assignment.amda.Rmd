@@ -1,0 +1,250 @@
+---
+title: "Assignment-Resort"
+author: "Nihal Biswas"
+date: "2023-05-19"
+output: html_document
+---
+
+
+## Importing Data
+
+```{r}
+library(readxl)
+setwd("C:\\Users\\Admin\\Downloads")
+resort = read_excel("Resort_visit.xls")
+head(resort)
+```
+
+- The dataset contains 42 observation and 8 variables.
+
+```{r}
+str(resort)
+```
+
+- The data is in the correct format.However, the X1 and X7 are labeled.
+
+The variables given in the dataset are:
+  1. X1: Resort visit
+  2. X2: Annual Family Income (‘000 US$)
+  3. X3: Attitude toward travel (measured on a 9 point Likert scale)
+  4. X4: Importance attached to family holiday (measured on a 9 point Likert scale)
+  5. X5: Household size
+  6. X6: Age of household head (in years)
+  7. X7: Amount spent on family holiday (three levels High (3), Medium (2) and Low (3))
+
+
+### Checking for Abnormalities
+
+```{r}
+boxplot(resort$X2)
+```
+
+- The X2 variable does not have outlaiers.
+
+```{r}
+sum(is.na(resort))
+```
+
+- The dataset does not contain any missing values.
+
+
+# Dividing the dataset into testing and training data
+
+```{r}
+set.seed(2)
+training_sample=sample(c(TRUE,FALSE),nrow(resort),replace = T,prob = c(0.85,0.15))
+training=resort[training_sample,]
+testing=resort[!training_sample,]
+```
+
+- As we are dividing the data into training and testing dataset it becomes necessary that our main dataset should contain a substantial number of data to perform discriminant analysis.
+- Over here the dataset contains 42 number of observations.
+- Dividing the dataset into training and testing. Where 85 percent of the observations is taken into the training dataset and rest 15 percent is used for testing.
+
+```{r}
+c("Original_Data"=nrow(resort),"Training_Data"=nrow(training),"Testing_Data"=nrow(testing))
+```
+
+- The training data contains 35 observations and the testing data contains 7 observations.
+
+
+# Descriptive statistics
+
+```{r}
+aggregate(training,by=list(training$X1),mean)
+```
+
+- From the above table we can see that there is a noticeable difference between the annual income is higher for the families who have visited a resort in the last two years than that of the families who have not visited a resort.($ 60,000 compared to $ 42,000).
+- We can also see that the families who have visited a resort in the last two months is also spending more on the holiday than the second group.
+- The families who have visited the resort in the last two years is having more number of household members than the second group. This can also be a reason for their higher spendings on family holiday.
+
+
+### Covaraince Variance Martix
+
+```{r}
+library(Hmisc)
+rcorr(as.matrix(training[,3:8]),type = "pearson")
+```
+
+
+# Wilks’ Lambda
+
+```{r}
+library(MASS)
+library(klaR)
+greedy.wilks(X1~X2+X3+X4+X5+X6+X7,data = training,niveau = 0.9)
+```
+
+- The wilks lamda values are low and all the variables are significant. 
+
+
+# Linear Discriminant Model
+
+```{r}
+model1 = lda(X1~X2+X3+X4+X5+X6+X7,data = training)
+model1
+```
+
+For the above model we are taking a group of 2 types. Hence, we are getting only one LD value.
+
+The model is:
+
+$$\text{}LD1=-0.07432505(X_{2}) - 0.03362075(X_{3}) - 0.21522833(X_{4}) - 0.28207796(X_{5}) - 0.03301792 (X_{6}) - 0.54520706(X_{7}) $$
+
+### Data Visualization
+
+```{r}
+plot(model1, col = as.integer(training$X1))
+```
+
+- We can see that for group one and group two only a small portion of the data is overlapping. 
+
+
+
+## Finding the efficiency of the model using the training data set
+
+```{r}
+lda.train = predict(model1)
+training$lda = lda.train$class
+table(training$lda,training$X1)
+```
+
+- For the above table we can see that our model is able to correctly predict 14 out of 18 for group 1.
+- And for group 2 our model is able to correctly predict 17 out of 17 data. 
+
+The efficiency of the model is.
+
+$$ Efficiency= (17+14)/35 =>88.57\text{%}$$
+
+
+## Finding the efficiency of the model using the testing data set
+
+```{r}
+lda.test = predict(model1,testing)
+testing$lda = lda.test$class
+table(testing$lda,testing$X1)
+
+```
+
+- For the above table we can see that our model is able to correctly predict 2 out of 3 for group 1.
+- And for group 2 our model is able to correctly predict 4 out of 4 data. 
+
+The efficiency of the model is.
+
+$$ Efficiency= (2+4)/7 =>85.71\text{%}$$
+
+The efficiency is slightly lower that the training prediction.
+
+# Linear Discriminant Analysis for Three Groups
+
+For three group linear discriminant analysis we will be using the X7 variable which has three types of amount spent on family holiday which is three levels High (3), Medium (2) and Low (3).
+
+```{r}
+set.seed(2)
+training_sample2=sample(c(TRUE,FALSE),nrow(resort),replace = T,prob = c(0.85,0.15))
+training2=resort[training_sample2,]
+testing2=resort[!training_sample2,]
+c("Original_Data"=nrow(resort),"Training_Data"=nrow(training2),"Testing_Data"=nrow(testing2))
+
+```
+
+- From the above table we can see that the training data contains 35 observations and the testing data contains 7.
+
+# Descriptive statistics
+
+```{r}
+aggregate(training2,by=list(training2$X7),mean)
+```
+
+- Just like what we have seen from the two variable model, we can see that there is a relation between the annual income earned by families and their spending pattern.As the average family income increases their spending amount in holidays also increases.
+- On the other hand we see that families that spend low money on vacation have a greater assimilation towards travel that the families who spend medium amount.
+- The same is the situation with X4. We see that the family who spends medium amount has a lower importance attachment towards family holiday than that of the families that are spending less.
+
+## Evaluating the Variance-Covariance matrix
+
+```{r}
+rcorr(as.matrix(training2[,2:7]),type = "pearson")
+```
+
+
+# Wilks’ Lambda
+
+```{r}
+greedy.wilks(X7~X1+X2+X3+X4+X5+X6,data=training2, niveau=0.9)
+```
+
+- The wilks lamda values are low and all the variables are significant. 
+
+
+# Linear Discriminant Model
+
+```{r}
+model2 = lda(X7~X1+X2+X3+X4+X5+X6,data = training2)
+model2
+
+```
+
+For the above model we are taking a group of 3 types. Hence, we are getting two LD value.
+
+The LD1 for this model is:
+
+$$\text{}LD1=-0.69338845(X_{1})+0.12321556 (X_{2}) + 0.21115872(X_{3}) - 0.09404942(X_{4}) -0.20549149(X_{5}) + 0.04966229 (X_{6}) $$
+The LD2 for this model is:
+
+$$\text{}LD1=1.64034474(X_{1})-0.01146683 (X_{2}) + 0.41014905(X_{3}) + 0.21887171(X_{4}) +0.52644258(X_{5}) + 0.05941597 (X_{6}) $$
+
+## Visualization
+
+```{r}
+plot(model2,col = as.integer(training2$X7))
+```
+
+- We can see from the graph that segregation has not been done as efficiently since there is a overlap between the group 1 and 2. This can also be seen in the descriptive statistics from the earlier table as most of the mean values of certain variables for group 1 and 2 were almost equal. 
+
+
+## Finding the efficiency of the model using the training data set
+
+```{r}
+lda.train2 = predict(model2,training2)
+training2$lda = lda.train2$class
+table(training2$lda,training2$X7)
+```
+
+ We can see that, in the training data set, the model was able to correctly predict 9 out of 11 correspondents who were spending low on vacation. 
+- Out of Out of 12 correspondents who spent medium amount of money, the model has been able to predict 10 of them correctly.
+- And, out of 12 correspondents who spent the most amount of money, the model has been able to predict 10 of them correctly.
+- Thus, the efficiency of the model while using the training data set is = $$Efficiency= (9+10+10)/35 = 0.8285\text{(~83%)} $$
+
+
+## Finding the efficiency of the model using the testing data set
+
+```{r}
+lda.test2 = predict(model2,testing2)
+testing2$lda = lda.test2$class
+table(testing2$lda,testing2$X7)
+```
+
+- From the above table we can see that surprisingly our model were able to predict all the correspondents to their correct group.
+
+- Thus, the efficiency of the model while using the testing data set is:
+$$Efficiency=100\text{%}$$
